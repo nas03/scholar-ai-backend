@@ -23,6 +23,7 @@ type IUserService interface {
 	CreateUser(ctx context.Context, username, password, email string) int
 	GetUserByEmail(ctx context.Context, email string) (*models.User, int)
 	GetUserByID(ctx context.Context, userID string) (*models.User, int)
+
 	UpdateUserAccountStatus(ctx context.Context, userID string, status int8) int
 	UpdateUserPassword(ctx context.Context, userID, password string) int
 	UpdateUserVerification(ctx context.Context, userID string, isEmailVerified, isPhoneVerified bool) int
@@ -32,11 +33,13 @@ type IUserService interface {
 
 type UserService struct {
 	userRepo repo.IUserRepository
+	mailRepo repo.IMailRepository
 }
 
-func NewUserService(userRepository repo.IUserRepository) IUserService {
+func NewUserService(userRepository repo.IUserRepository, mailRepository repo.IMailRepository) IUserService {
 	return &UserService{
 		userRepo: userRepository,
+		mailRepo: mailRepository,
 	}
 }
 
@@ -90,24 +93,33 @@ func (s *UserService) CreateUser(ctx context.Context, username, password, email 
 
 	// Send OTP verify user's email
 	otp := utils.GenerateSixDigitOtp()
+	template, err := s.mailRepo.GetMailTemplate(ctx, consts.OTP_VERIFICATION_MAIL)
+	if err != nil {
+		global.Log.Error("Failed to get verification mail template", zap.Int("mail_id", consts.OTP_VERIFICATION_MAIL), zap.Error(err))
+	}
+	mailHelper := helper.NewMailHelper()
+	html := mailHelper.ReplaceParameters(ctx, template.Body, models.OTPVerificationMail{OTP: otp})
+
+	_, err = mailHelper.SendMail(
+		ctx,
+		email,
+		fmt.Sprintf("ScholarAI Verification Code %d", otp),
+		html,
+	)
+	if err != nil {
+		global.Log.Error("Failed to send verification email", zap.String("email", email), zap.Error(err))
+		return response.CodeMailSendFailed
+	}
+
+	// Save OTP to Redis
 	redisKey := fmt.Sprintf(consts.REDIS_KEY_URS_OTP_PREFIX, email)
 	if err := utils.NewRedisCache().SetEx(ctx, redisKey, otp, consts.REDIS_OTP_EXPIRATION); err != nil {
 		global.Log.Error("Failed to store otp in redis", zap.Error(err))
 		return response.CodeRegisterInternalError
 	}
 
-	// TODO: Should save mailID, email, email type to DB
-	_, err = helper.NewMailHelper().SendMail(
-		ctx,
-		email,
-		fmt.Sprintf("ScholarAI Verification Code %d", otp),
-		fmt.Sprintf("<p>%d</p>", otp),
-	)
-	if err != nil {
-		global.Log.Error("Failed to send verification email", zap.String("email", email), zap.Error(err))
-		return response.CodeMailSendFailed
-	}
 	global.Log.Info("Success creating new user", zap.String("userID", userUUID.String()))
+
 	return response.CodeSuccess
 }
 
@@ -181,7 +193,16 @@ func (s *UserService) UpdateUserPassword(ctx context.Context, userID, password s
 
 // UpdateUserVerification updates user verification status with proper error handling
 func (s *UserService) UpdateUserVerification(ctx context.Context, userID string, isEmailVerified, isPhoneVerified bool) int {
-	err := s.userRepo.UpdateUserVerification(ctx, userID, isEmailVerified, isPhoneVerified)
+	emailVerifiedFlag := consts.Flag.FALSE
+	if isEmailVerified {
+		emailVerifiedFlag = consts.Flag.TRUE
+	}
+	phoneVerifiedFlag := consts.Flag.FALSE
+	if isPhoneVerified {
+		phoneVerifiedFlag = consts.Flag.TRUE
+	}
+
+	err := s.userRepo.UpdateUserVerification(ctx, userID, emailVerifiedFlag, phoneVerifiedFlag)
 	if err != nil {
 		global.Log.Error("Error updating user verification", zap.Error(err), zap.String("userID", userID))
 		return response.CodeFailedUpdateUser
@@ -202,7 +223,7 @@ func (s *UserService) VerifyUserEmail(ctx context.Context, otp, email string) in
 		return response.CodeInvalidEmail
 	}
 
-	_, err := s.userRepo.GetUserByEmail(ctx, email)
+	user, err := s.userRepo.GetUserByEmail(ctx, email)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			global.Log.Warn(errMessage.ErrUserNotFound.Error(), zap.String("email", email))
@@ -213,12 +234,26 @@ func (s *UserService) VerifyUserEmail(ctx context.Context, otp, email string) in
 		return response.CodeFailedGetUser
 	}
 
-	// TODO: Implement OTP verification logic
-	// This would typically involve:
-	// 1. Getting user by email
-	// 2. Checking if OTP matches and is not expired
-	// 3. Updating user verification status
-	// 4. Clearing the OTP from storage
+	// Check if OTP is valid
+	redisKey := fmt.Sprintf(consts.REDIS_KEY_URS_OTP_PREFIX, email)
+	redisCache := utils.NewRedisCache()
+	if rOTP, err := redisCache.Get(ctx, redisKey); err != nil {
+		return response.CodeOTPExpired
+	} else if otp != rOTP {
+		return response.CodeInvalidOTP
+	}
+
+	// Activate user account and verify email in a single atomic operation
+	err = s.userRepo.ActivateUserAccount(ctx, user.UserID, consts.UserAccountStatus.ACTIVE, consts.Flag.TRUE)
+	if err != nil {
+		global.Log.Error("Failed to activate user account", zap.Error(err))
+		return response.CodeRegisterInternalError
+	}
+
+	err = redisCache.Del(ctx, redisKey)
+	if err != nil {
+		global.Log.Warn("Failed to delete otp", zap.Error(err))
+	}
 
 	global.Log.Info("Email verification successful", zap.String("email", email))
 	return response.CodeSuccess

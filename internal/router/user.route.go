@@ -13,7 +13,8 @@ func SetupUserRoutes(apiV1 *gin.RouterGroup) {
 
 	// Initialize dependencies
 	userRepo := repositories.NewUserRepository(global.Mdb)
-	userService := services.NewUserService(userRepo)
+	mailRepo := repositories.NewMailRepository(global.Mdb)
+	userService := services.NewUserService(userRepo, mailRepo)
 	userController := controllers.NewUserController(userService)
 
 	// User routes

@@ -16,13 +16,15 @@ type IUserRepository interface {
 	GetUserByID(ctx context.Context, userID string) (*models.User, error)
 
 	// Update operations
+	ActivateUserAccount(ctx context.Context, userID string, status, isEmailVerified int8) error
 	UpdateUserAccountStatus(ctx context.Context, userID string, status int8) error
 	UpdateUserPassword(ctx context.Context, userID, password string) error
-	UpdateUserVerification(ctx context.Context, userID string, isEmailVerified, isPhoneVerified bool) error
-	UpdateUser(ctx context.Context, userID string, updates map[string]interface{}) error
+	UpdateUserVerification(ctx context.Context, userID string, isEmailVerified, isPhoneVerified int8) error
+	UpdateUser(ctx context.Context, userID string, updates map[string]any) error
 
 	// Transaction operations (like knex.js db.transaction)
 	WithTransaction(ctx context.Context, fn func(tx *gorm.DB) error) error
+	WithTx(tx *gorm.DB) IUserRepository
 }
 
 type UserRepository struct {
@@ -32,6 +34,11 @@ type UserRepository struct {
 // NewUserRepository creates a new user repository with the given database connection.
 func NewUserRepository(db *gorm.DB) IUserRepository {
 	return &UserRepository{db: db}
+}
+
+// WithTx creates a new instance of the repository with a transaction
+func (r *UserRepository) WithTx(tx *gorm.DB) IUserRepository {
+	return &UserRepository{db: tx}
 }
 
 // CreateUser inserts a new user into the database.
@@ -84,6 +91,20 @@ func (r *UserRepository) UpdateUser(ctx context.Context, userID string, updates 
 	return result.Error
 }
 
+func (r *UserRepository) ActivateUserAccount(ctx context.Context, userID string, status, isEmailVerified int8) error {
+	if status != consts.UserAccountStatus.INACTIVE && status != consts.UserAccountStatus.ACTIVE {
+		return fmt.Errorf("invalid account status: %d, must be %d (inactive) or %d (active)",
+			status, consts.UserAccountStatus.INACTIVE, consts.UserAccountStatus.ACTIVE)
+	}
+
+	return r.db.WithContext(ctx).Model(&models.User{}).
+		Where("user_id = ?", userID).
+		Updates(map[string]interface{}{
+			"account_status":    status,
+			"is_email_verified": isEmailVerified,
+		}).Error
+}
+
 // UpdateUserAccountStatus updates a user's account status.
 // Valid status values: consts.UserAccountStatus.INACTIVE (0) or consts.UserAccountStatus.ACTIVE (1)
 // Returns raw GORM error - service layer should handle error interpretation
@@ -113,7 +134,7 @@ func (r *UserRepository) UpdateUserPassword(ctx context.Context, userID, passwor
 
 // UpdateUserVerification updates user verification status.
 // Returns raw GORM error - service layer should handle error interpretation
-func (r *UserRepository) UpdateUserVerification(ctx context.Context, userID string, isEmailVerified, isPhoneVerified bool) error {
+func (r *UserRepository) UpdateUserVerification(ctx context.Context, userID string, isEmailVerified, isPhoneVerified int8) error {
 	updates := map[string]interface{}{
 		"is_email_verified": isEmailVerified,
 		"is_phone_verified": isPhoneVerified,

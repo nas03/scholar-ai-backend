@@ -72,6 +72,19 @@ CREATE TABLE IF NOT EXISTS `reminders`
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Create mail table
+CREATE TABLE `mail`
+(
+    `id`         INT PRIMARY KEY,
+    `subject`    TEXT     NOT NULL,
+    `header`     TEXT,
+    `body`       TEXT     NOT NULL,
+    `footer`     TEXT,
+    `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+
 -- Create indexes
 CREATE INDEX `users_index_email` ON `users` (`email`);
 CREATE INDEX `users_index_username` ON `users` (`username`);

@@ -6,11 +6,12 @@ require (
 	ariga.io/atlas-provider-gorm v0.6.0
 	github.com/gin-gonic/gin v1.11.0
 	github.com/google/uuid v1.6.0
+	github.com/redis/go-redis/v9 v9.16.0
+	github.com/resend/resend-go/v2 v2.27.0
 	github.com/spf13/viper v1.21.0
 	github.com/swaggo/files v1.0.1
 	github.com/swaggo/gin-swagger v1.6.0
 	github.com/swaggo/swag v1.16.3
-	github.com/wneessen/go-mail v0.7.2
 	go.uber.org/zap v1.27.0
 	golang.org/x/crypto v0.43.0
 	gorm.io/driver/mysql v1.6.0
@@ -90,8 +91,6 @@ require (
 	github.com/planetscale/vtprotobuf v0.6.1-0.20240319094008-0393e58bdf10 // indirect
 	github.com/quic-go/qpack v0.5.1 // indirect
 	github.com/quic-go/quic-go v0.55.0 // indirect
-	github.com/redis/go-redis/v9 v9.16.0 // indirect
-	github.com/resend/resend-go/v2 v2.27.0 // indirect
 	github.com/sagikazarmark/locafero v0.11.0 // indirect
 	github.com/sourcegraph/conc v0.3.1-0.20240121214520-5f936abd7ae8 // indirect
 	github.com/spf13/afero v1.15.0 // indirect

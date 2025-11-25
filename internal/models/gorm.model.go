@@ -91,3 +91,16 @@ type CourseTag struct {
 func (CourseTag) TableName() string {
 	return "course_tags"
 }
+
+type Mail struct {
+	ID      int    `gorm:"primaryKey;autoIncrement" json:"id"`
+	Subject string `gorm:"not null;type:text" json:"subject"`
+	Header  string `gorm:"type:text" json:"header"`
+	Body    string `gorm:"not null;type:text" json:"body"`
+	Footer  string `gorm:"type:text" json:"footer"`
+	TableCommon
+}
+
+func (Mail) TableName() string {
+	return "mail"
+}

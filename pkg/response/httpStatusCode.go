@@ -18,6 +18,7 @@ const (
 	CodeInvalidEmail          = 2011
 	CodeInvalidUsername       = 2012
 	CodeEmptyPassword         = 2013
+	CodeOTPNotFound           = 2014
 
 	// Mail related codes
 	CodeMailConfigMissing    = 3001
@@ -39,6 +40,7 @@ var msg = map[int]string{
 	CodeFailedGetUser:         "Failed to retrieve user information",
 	CodeFailedUpdateUser:      "Failed to update user information",
 	CodeInvalidInput:          "Invalid input parameters provided",
+	CodeOTPNotFound:           "Failed to retrieve otp",
 	CodeInvalidOTP:            "Invalid OTP provided",
 	CodeOTPExpired:            "OTP has expired",
 	CodeEmailNotVerified:      "Email address not verified",
