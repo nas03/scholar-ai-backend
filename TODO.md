@@ -1,6 +1,6 @@
-- [ ] Save email to database ("email" table)
-- [ ] Send email to users
-- [ ] Verify email
+- [x] Save email to database ("email" table)
+- [x] Send email to users
+- [x] Verify email
 - [ ] User Login
   - [ ] AccessToken, RefreshToken
   - [ ] OAUTH2 

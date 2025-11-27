@@ -24,6 +24,40 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/users/activate": {
+            "post": {
+                "description": "Verify OTP and activate user account",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Activate user's account using otp \u0026 email",
+                "parameters": [
+                    {
+                        "description": "Activation credentials",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.ActivateUserAccountRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Error response (invalid OTP, etc.)",
+                        "schema": {
+                            "$ref": "#/definitions/response.ResponseData"
+                        }
+                    }
+                }
+            }
+        },
         "/users/create": {
             "post": {
                 "description": "Register a new user account. Returns success with OTP requirement if registration is successful.",
@@ -86,6 +120,21 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "models.ActivateUserAccountRequest": {
+            "type": "object",
+            "required": [
+                "email",
+                "otp"
+            ],
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "otp": {
+                    "type": "integer"
+                }
+            }
+        },
         "models.CreateUserRequest": {
             "type": "object",
             "required": [

@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/nas03/scholar-ai/backend/internal/models"
@@ -48,7 +49,7 @@ func (c *UserController) CreateUser(ctx *gin.Context) {
 
 	// Validate JSON binding
 	if err := ctx.ShouldBindJSON(&payload); err != nil {
-		response.ErrorResponse(ctx, response.CodeInvalidInput, err.Error())
+		response.ErrorResponse(ctx, response.CodeInvalidParams, err.Error())
 		return
 	}
 
@@ -59,6 +60,31 @@ func (c *UserController) CreateUser(ctx *gin.Context) {
 	if code == response.CodeSuccess {
 		data := map[string]any{"requiresOtp": true}
 		response.SuccessResponse(ctx, code, data)
+	} else {
+		response.ErrorResponse(ctx, code, "")
+	}
+}
+
+// ActivateUserAccount godoc
+// @Summary      Activate user's account using otp & email
+// @Description  Verify OTP and activate user account
+// @Tags         users
+// @Accept       json
+// @Produce      json
+// @Param        request  body      models.ActivateUserAccountRequest  true  "Activation credentials"
+// @Success      200      {object}  response.ResponseData              "Account activated successfully"
+// @Failure      200      {object}  response.ResponseData              "Error response (invalid OTP, etc.)"
+// @Router       /users/activate [post]
+func (c *UserController) ActivateUserAccount(ctx *gin.Context) {
+	var payload models.ActivateUserAccountRequest
+
+	if err := ctx.ShouldBindJSON(&payload); err != nil {
+		response.ErrorResponse(ctx, response.CodeInvalidParams, err.Error())
+		return
+	}
+
+	if code := c.userService.ActivateUserAccount(ctx, strconv.Itoa((payload.Otp)), payload.Email); code == response.CodeSuccess {
+		response.SuccessResponse(ctx, code, nil)
 	} else {
 		response.ErrorResponse(ctx, code, "")
 	}

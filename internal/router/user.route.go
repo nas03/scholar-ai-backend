@@ -21,6 +21,7 @@ func SetupUserRoutes(apiV1 *gin.RouterGroup) {
 	users := apiV1.Group("/users")
 	{
 		users.POST("/create", userController.CreateUser)
+		users.POST("/activate", userController.ActivateUserAccount)
 		users.GET("/ping", controllers.Ping) // Keep ping for testing
 	}
 }

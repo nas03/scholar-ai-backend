@@ -1,59 +1,86 @@
 package response
 
 const (
-	// Success codes
-	CodeSuccess = 200
+	// Success
+	CodeSuccess = 20000
 
-	// User related codes
-	CodeRegisterInternalError = 2001
-	CodeUserAlreadyExists     = 2002
-	CodeUserNotFound          = 2003
-	CodeFailedGetUser         = 2004
-	CodeFailedUpdateUser      = 2005
-	CodeInvalidInput          = 2006
-	CodeInvalidOTP            = 2007
-	CodeOTPExpired            = 2008
-	CodeEmailNotVerified      = 2009
-	CodePhoneNotVerified      = 2010
-	CodeInvalidEmail          = 2011
-	CodeInvalidUsername       = 2012
-	CodeEmptyPassword         = 2013
-	CodeOTPNotFound           = 2014
+	// General Errors (40000 - 49999)
+	CodeInvalidParams = 40001
+	CodeServerBusy    = 50000
 
-	// Mail related codes
-	CodeMailConfigMissing    = 3001
-	CodeMailUsernameMissing  = 3002
-	CodeMailPasswordMissing  = 3003
-	CodeMailClientCreation   = 3004
-	CodeMailConnectionFailed = 3005
-	CodeMailSendFailed       = 3006
+	// Auth Errors (10000 - 19999)
+	CodeInvalidCredentials = 10001
+	CodeTokenInvalid       = 10002
+	CodeTokenExpired       = 10003
+
+	// User Errors (20000 - 29999)
+	CodeUserNotFound         = 20001
+	CodeUserAlreadyExists    = 20002
+	CodeUserAccountLocked    = 20003
+	CodeUserEmailNotVerified = 20004
+	CodeUserPhoneNotVerified = 20005
+	CodeUserInvalidPassword  = 20006
+	CodeUserInvalidEmail     = 20007
+	CodeUserInvalidUsername  = 20008
+	CodeUserCreationFailed   = 20009
+	CodeUserUpdateFailed     = 20010
+	CodeUserDeletionFailed   = 20011
+
+	// OTP Errors (30000 - 39999)
+	CodeOTPInvalid    = 30001
+	CodeOTPExpired    = 30002
+	CodeOTPNotFound   = 30003
+	CodeOTPSendFailed = 30004
+
+	// Mail Errors (50000 - 59999) - keeping original range for now but aligning pattern
+	CodeMailSendFailed       = 50001
+	CodeMailConfigMissing    = 50002
+	CodeMailConnectionFailed = 50003
 )
 
-// Error messages mapping (following fidecwalletserver pattern)
+// msg maps error codes to user-friendly messages
 var msg = map[int]string{
+	// Success
 	CodeSuccess: "Success",
 
-	// User related messages
-	CodeRegisterInternalError: "Internal server error occurred during registration",
-	CodeUserAlreadyExists:     "User already exists with this email or username",
-	CodeUserNotFound:          "User not found",
-	CodeFailedGetUser:         "Failed to retrieve user information",
-	CodeFailedUpdateUser:      "Failed to update user information",
-	CodeInvalidInput:          "Invalid input parameters provided",
-	CodeOTPNotFound:           "Failed to retrieve otp",
-	CodeInvalidOTP:            "Invalid OTP provided",
-	CodeOTPExpired:            "OTP has expired",
-	CodeEmailNotVerified:      "Email address not verified",
-	CodePhoneNotVerified:      "Phone number not verified",
-	CodeInvalidEmail:          "Invalid email format",
-	CodeInvalidUsername:       "Invalid username format",
-	CodeEmptyPassword:         "Password cannot be empty",
+	// General
+	CodeInvalidParams: "Invalid parameters provided",
+	CodeServerBusy:    "Server is busy, please try again later",
 
-	// Mail related messages
-	CodeMailConfigMissing:    "Mail configuration is missing",
-	CodeMailUsernameMissing:  "Mail username is missing",
-	CodeMailPasswordMissing:  "Mail password is missing",
-	CodeMailClientCreation:   "Failed to create mail client",
-	CodeMailConnectionFailed: "Failed to connect to mail service",
+	// Auth
+	CodeInvalidCredentials: "Invalid email or password",
+	CodeTokenInvalid:       "Invalid authentication token",
+	CodeTokenExpired:       "Authentication token has expired",
+
+	// User
+	CodeUserNotFound:         "User not found",
+	CodeUserAlreadyExists:    "User already exists",
+	CodeUserAccountLocked:    "User account is locked",
+	CodeUserEmailNotVerified: "Email address is not verified",
+	CodeUserPhoneNotVerified: "Phone number is not verified",
+	CodeUserInvalidPassword:  "Invalid password format",
+	CodeUserInvalidEmail:     "Invalid email format",
+	CodeUserInvalidUsername:  "Invalid username format",
+	CodeUserCreationFailed:   "Failed to create user account",
+	CodeUserUpdateFailed:     "Failed to update user information",
+	CodeUserDeletionFailed:   "Failed to delete user account",
+
+	// OTP
+	CodeOTPInvalid:    "Invalid OTP code",
+	CodeOTPExpired:    "OTP code has expired",
+	CodeOTPNotFound:   "OTP code not found",
+	CodeOTPSendFailed: "Failed to send OTP",
+
+	// Mail
 	CodeMailSendFailed:       "Failed to send email",
+	CodeMailConfigMissing:    "Mail configuration is missing",
+	CodeMailConnectionFailed: "Failed to connect to mail service",
+}
+
+// GetMsg retrieves the message for a given error code
+func GetMsg(code int) string {
+	if m, ok := msg[code]; ok {
+		return m
+	}
+	return "Unknown error"
 }

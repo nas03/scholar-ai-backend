@@ -28,7 +28,7 @@ type IUserService interface {
 	UpdateUserPassword(ctx context.Context, userID, password string) int
 	UpdateUserVerification(ctx context.Context, userID string, isEmailVerified, isPhoneVerified bool) int
 	// UpdateUserInfo(email, phoneNumber string) int
-	VerifyUserEmail(ctx context.Context, otp, email string) int
+	ActivateUserAccount(ctx context.Context, otp, email string) int
 }
 
 type UserService struct {
@@ -47,29 +47,29 @@ func (s *UserService) CreateUser(ctx context.Context, username, password, email 
 	// Validate input parameters
 	if username == "" {
 		global.Log.Warn(errMessage.ErrInvalidUsername.Error(), zap.String("username", username))
-		return response.CodeInvalidUsername
+		return response.CodeUserInvalidUsername
 	}
 	if email == "" {
 		global.Log.Warn(errMessage.ErrInvalidEmail.Error(), zap.String("email", email))
-		return response.CodeInvalidEmail
+		return response.CodeUserInvalidEmail
 	}
 	if password == "" {
 		global.Log.Warn(errMessage.ErrEmptyPassword.Error(), zap.String("password", password))
-		return response.CodeEmptyPassword
+		return response.CodeUserInvalidPassword
 	}
 
 	// Generate user's uuid
 	userUUID, err := uuid.NewRandom()
 	if err != nil {
 		global.Log.Error("Error creating UUID", zap.Error(err))
-		return response.CodeRegisterInternalError
+		return response.CodeUserCreationFailed
 	}
 
 	// Hash user's password
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		global.Log.Error("Error generating hashedPassword", zap.Error(err))
-		return response.CodeRegisterInternalError
+		return response.CodeUserCreationFailed
 	}
 
 	user := &models.User{
@@ -88,7 +88,7 @@ func (s *UserService) CreateUser(ctx context.Context, username, password, email 
 		}
 
 		global.Log.Error("Error creating new user", zap.Error(err))
-		return response.CodeRegisterInternalError
+		return response.CodeUserCreationFailed
 	}
 
 	// Send OTP verify user's email
@@ -115,7 +115,7 @@ func (s *UserService) CreateUser(ctx context.Context, username, password, email 
 	redisKey := fmt.Sprintf(consts.REDIS_KEY_URS_OTP_PREFIX, email)
 	if err := utils.NewRedisCache().SetEx(ctx, redisKey, otp, consts.REDIS_OTP_EXPIRATION); err != nil {
 		global.Log.Error("Failed to store otp in redis", zap.Error(err))
-		return response.CodeRegisterInternalError
+		return response.CodeUserCreationFailed
 	}
 
 	global.Log.Info("Success creating new user", zap.String("userID", userUUID.String()))
@@ -133,7 +133,7 @@ func (s *UserService) GetUserByEmail(ctx context.Context, email string) (*models
 		}
 
 		global.Log.Error("Error getting user by email", zap.Error(err), zap.String("email", email))
-		return nil, response.CodeFailedGetUser
+		return nil, response.CodeServerBusy
 	}
 
 	return user, response.CodeSuccess
@@ -149,7 +149,7 @@ func (s *UserService) GetUserByID(ctx context.Context, userID string) (*models.U
 		}
 
 		global.Log.Error("Error getting user by ID", zap.Error(err), zap.String("userID", userID))
-		return nil, response.CodeFailedGetUser
+		return nil, response.CodeServerBusy
 	}
 
 	return user, response.CodeSuccess
@@ -162,11 +162,11 @@ func (s *UserService) UpdateUserAccountStatus(ctx context.Context, userID string
 		// Check if it's a validation error from repository
 		if errors.Is(err, errMessage.ErrInvalidStatus) {
 			global.Log.Warn(errMessage.ErrInvalidStatus.Error(), zap.String("userID", userID), zap.Int8("status", status))
-			return response.CodeInvalidInput
+			return response.CodeInvalidParams
 		}
 
 		global.Log.Error("Error updating user account status", zap.Error(err), zap.String("userID", userID), zap.Int8("status", status))
-		return response.CodeFailedUpdateUser
+		return response.CodeUserUpdateFailed
 	}
 
 	global.Log.Info("Success updating user account status", zap.String("userID", userID), zap.Int8("status", status))
@@ -178,13 +178,13 @@ func (s *UserService) UpdateUserPassword(ctx context.Context, userID, password s
 	// Validate password at service level
 	if password == "" {
 		global.Log.Warn(errMessage.ErrEmptyPassword.Error(), zap.String("userID", userID))
-		return response.CodeEmptyPassword
+		return response.CodeUserInvalidPassword
 	}
 
 	err := s.userRepo.UpdateUserPassword(ctx, userID, password)
 	if err != nil {
 		global.Log.Error("Error updating user password", zap.Error(err), zap.String("userID", userID))
-		return response.CodeFailedUpdateUser
+		return response.CodeUserUpdateFailed
 	}
 
 	global.Log.Info("Success updating user password", zap.String("userID", userID))
@@ -205,22 +205,22 @@ func (s *UserService) UpdateUserVerification(ctx context.Context, userID string,
 	err := s.userRepo.UpdateUserVerification(ctx, userID, emailVerifiedFlag, phoneVerifiedFlag)
 	if err != nil {
 		global.Log.Error("Error updating user verification", zap.Error(err), zap.String("userID", userID))
-		return response.CodeFailedUpdateUser
+		return response.CodeUserUpdateFailed
 	}
 
 	global.Log.Info("Success updating user verification", zap.String("userID", userID), zap.Bool("emailVerified", isEmailVerified), zap.Bool("phoneVerified", isPhoneVerified))
 	return response.CodeSuccess
 }
 
-func (s *UserService) VerifyUserEmail(ctx context.Context, otp, email string) int {
+func (s *UserService) ActivateUserAccount(ctx context.Context, otp, email string) int {
 	// Validate input parameters
 	if otp == "" {
 		global.Log.Warn(errMessage.ErrInvalidOTP.Error(), zap.String("otp", otp))
-		return response.CodeInvalidOTP
+		return response.CodeOTPInvalid
 	}
 	if email == "" {
 		global.Log.Warn(errMessage.ErrInvalidEmail.Error(), zap.String("email", email))
-		return response.CodeInvalidEmail
+		return response.CodeUserInvalidEmail
 	}
 
 	user, err := s.userRepo.GetUserByEmail(ctx, email)
@@ -231,7 +231,7 @@ func (s *UserService) VerifyUserEmail(ctx context.Context, otp, email string) in
 		}
 
 		global.Log.Error("Error getting user by email", zap.Error(err), zap.String("email", email))
-		return response.CodeFailedGetUser
+		return response.CodeServerBusy
 	}
 
 	// Check if OTP is valid
@@ -240,14 +240,14 @@ func (s *UserService) VerifyUserEmail(ctx context.Context, otp, email string) in
 	if rOTP, err := redisCache.Get(ctx, redisKey); err != nil {
 		return response.CodeOTPExpired
 	} else if otp != rOTP {
-		return response.CodeInvalidOTP
+		return response.CodeOTPInvalid
 	}
 
 	// Activate user account and verify email in a single atomic operation
 	err = s.userRepo.ActivateUserAccount(ctx, user.UserID, consts.UserAccountStatus.ACTIVE, consts.Flag.TRUE)
 	if err != nil {
 		global.Log.Error("Failed to activate user account", zap.Error(err))
-		return response.CodeRegisterInternalError
+		return response.CodeUserUpdateFailed
 	}
 
 	err = redisCache.Del(ctx, redisKey)
