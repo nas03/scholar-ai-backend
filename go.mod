@@ -5,6 +5,7 @@ go 1.24.6
 require (
 	ariga.io/atlas-provider-gorm v0.6.0
 	github.com/gin-gonic/gin v1.11.0
+	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/google/uuid v1.6.0
 	github.com/redis/go-redis/v9 v9.16.0
 	github.com/resend/resend-go/v2 v2.27.0

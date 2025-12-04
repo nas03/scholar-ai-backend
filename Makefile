@@ -56,5 +56,12 @@ clean:
 # Usage: make swagger
 swagger:
 	swag init -g cmd/server/main.go -o docs
+
+# Generate RSA private key and X.509 certificate for JWT signing
+# Creates a 2048-bit RSA private key and self-signed certificate in keys/ directory
+# Usage: make generate-key
+# Options: make generate-key KEY=path/to/key.pem CERT=path/to/cert.pem
+generate-key:
+	@go run ./cmd/keygen -key $(or $(KEY),keys/private_key.pem) -cert $(or $(CERT),keys/certificate.pem)
 	
-.PHONY: dev build test migrate up down swagger
+.PHONY: dev build test migrate up down swagger generate-key
