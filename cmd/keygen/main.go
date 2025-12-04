@@ -49,7 +49,7 @@ func main() {
 
 	// Step 1: Generate RSA private key (2048-bit is standard for RS256)
 	fmt.Println("Generating RSA private key (2048-bit)...")
-	privateKey, err := helper.CreatePrivateKey(*keyPath, *certPath)
+	privateKey, err := helper.NewRSAHelper().CreatePrivateKey(*keyPath, *certPath)
 	if err != nil {
 		global.Log.Error("Error creating a private key", zap.Error(err))
 		os.Exit(1)

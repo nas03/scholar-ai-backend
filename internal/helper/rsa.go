@@ -1,6 +1,7 @@
 package helper
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
@@ -15,8 +16,20 @@ import (
 	"go.uber.org/zap"
 )
 
+type IRSAHelper interface {
+	CreatePrivateKey(keyPath, certPath string) (*rsa.PrivateKey, error)
+	LoadPrivateKey(ctx context.Context, keyPath string) (*rsa.PrivateKey, error)
+	GetPublicKey(ctx context.Context, privateKey *rsa.PrivateKey) *rsa.PublicKey
+}
+
+type RSAHelper struct{}
+
+func NewRSAHelper() IRSAHelper {
+	return &RSAHelper{}
+}
+
 // CreatePrivateKey generates a new RSA private key (2048-bit for RS256)
-func CreatePrivateKey(keyPath, certPath string) (*rsa.PrivateKey, error) {
+func (h *RSAHelper) CreatePrivateKey(keyPath, certPath string) (*rsa.PrivateKey, error) {
 	// Step 1: Generate RSA private key (2048-bit is standard for RS256)
 	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
@@ -106,12 +119,14 @@ func CreatePrivateKey(keyPath, certPath string) (*rsa.PrivateKey, error) {
 	return privateKey, nil
 }
 
-// GetPublicKey extracts the public key from a private key
-func GetPublicKey(keyPath string) (*rsa.PublicKey, error) {
-	// Read the PEM file
+// LoadPrivateKey loads an RSA private key from a PEM file
+func (h *RSAHelper) LoadPrivateKey(ctx context.Context, keyPath string) (*rsa.PrivateKey, error) {
+	// Use default path if keyPath is empty
 	if keyPath == "" {
 		keyPath = "keys/private_key.pem"
 	}
+
+	// Read the PEM file
 	keyData, err := os.ReadFile(keyPath)
 	if err != nil {
 		global.Log.Error("Error reading private key file", zap.Error(err), zap.String("path", keyPath))
@@ -132,5 +147,10 @@ func GetPublicKey(keyPath string) (*rsa.PublicKey, error) {
 		return nil, err
 	}
 
-	return &privateKey.PublicKey, nil
+	return privateKey, nil
+}
+
+// GetPublicKey extracts the public key from a private key
+func (h *RSAHelper) GetPublicKey(ctx context.Context, privateKey *rsa.PrivateKey) *rsa.PublicKey {
+	return &privateKey.PublicKey
 }
