@@ -16,6 +16,7 @@ import (
 
 type IAuthService interface {
 	Login(ctx context.Context, email, password string) (*models.AuthTokenPair, int)
+	RotateAuthToken(ctx context.Context, accessToken, refreshToken string) (*models.AuthTokenPair, int)
 }
 
 type AuthService struct {
@@ -50,21 +51,65 @@ func (s *AuthService) Login(ctx context.Context, email, password string) (*model
 		return nil, response.CodeInvalidCredentials
 	}
 
-	// TODO: Generate an access_token and refresh_token
-	// TODO: Send access_token(local_storage) & refresh_token(cookies)
 	jwtHelper := helper.NewJWTHelper()
 	claim := map[string]interface{}{
 		"UserID": user.UserID,
 		"Email":  user.Email,
 	}
+
 	accessToken, err := jwtHelper.GenerateAuthToken(ctx, claim, 24*time.Hour)
 	if err != nil {
 		global.Log.Error("Failed to generate access token", zap.Error(err))
 		return nil, response.CodeServerBusy
 	}
 	refreshToken, err := jwtHelper.GenerateAuthToken(ctx, claim, 30*24*time.Hour)
+	if err != nil {
+		global.Log.Error("Failed to generate refresh token", zap.Error(err))
+		return nil, response.CodeServerBusy
+	}
+
 	return &models.AuthTokenPair{
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
+	}, response.CodeSuccess
+}
+
+func (s *AuthService) RotateAuthToken(ctx context.Context, accessToken, refreshToken string) (*models.AuthTokenPair, int) {
+	jwtHelper := helper.NewJWTHelper()
+
+	// TODO: Detect reused token
+	// TODO: Revoke session
+	// Validate auth tokens
+	_, err := jwtHelper.ValidateAuthToken(ctx, accessToken)
+	if err != nil {
+		return nil, response.CodeTokenInvalid
+	}
+
+	refreshTokenClaim, err := jwtHelper.ValidateAuthToken(ctx, refreshToken)
+	if err != nil {
+		return nil, response.CodeTokenInvalid
+	}
+
+	// Auth token's claim
+	claim := map[string]any{
+		"UserID": refreshTokenClaim.UserID,
+		"Email":  refreshTokenClaim.Email,
+	}
+
+	// Rotate Token
+	rotatedAccessToken, err := jwtHelper.GenerateAuthToken(ctx, claim, 24*time.Hour)
+	if err != nil {
+		global.Log.Error("Failed to generate access token", zap.Error(err))
+		return nil, response.CodeServerBusy
+	}
+	rotatedRefreshToken, err := jwtHelper.GenerateAuthToken(ctx, claim, 30*24*time.Hour)
+	if err != nil {
+		global.Log.Error("Failed to generate refresh token", zap.Error(err))
+		return nil, response.CodeServerBusy
+	}
+
+	return &models.AuthTokenPair{
+		AccessToken:  rotatedAccessToken,
+		RefreshToken: rotatedRefreshToken,
 	}, response.CodeSuccess
 }

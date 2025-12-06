@@ -1,6 +1,10 @@
 - [x] Save email to database ("email" table)
 - [x] Send email to users
 - [x] Verify email
+- [ ] Auth workflow
+  - [ ] Session strategy
+  - [ ] Revoke Token
+  - [ ] Auth Middleware
 - [ ] User Login
   - [x] AccessToken, RefreshToken
   - [ ] OAUTH2 

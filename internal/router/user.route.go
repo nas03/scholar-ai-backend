@@ -17,9 +17,14 @@ func SetupUserRoutes(apiV1 *gin.RouterGroup) {
 	userService := services.NewUserService(userRepo, mailRepo)
 	userController := controllers.NewUserController(userService)
 
+	// authMiddleware := middleware.NewAuthMiddleware(helper.NewJWTHelper())
 	// User routes
 	users := apiV1.Group("/users")
 	{
+		// privateRoute := users.Use(authMiddleware.Auth())
+		// {
+
+		// }
 		users.POST("/create", userController.CreateUser)
 		users.POST("/activate", userController.ActivateUserAccount)
 		users.GET("/ping", controllers.Ping) // Keep ping for testing
